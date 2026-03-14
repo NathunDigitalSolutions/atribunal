@@ -216,6 +216,16 @@ body {
   animation: spin 0.7s linear infinite;
 }
 
+.spinner-tiny {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
+.spinner-light {
+  border-top-color: #fff;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -456,7 +466,49 @@ body {
 }
 
 .progress-item {
-  padding: 3px 0;
+  padding: 6px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(99, 130, 255, 0.05);
+}
+
+.progress-item:last-child {
+  border-bottom: none;
+}
+
+.progress-text {
+  flex: 1;
+}
+
+.btn-tiny {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--transition);
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.btn-tiny:hover:not(:disabled) {
+  background: rgba(52, 211, 153, 0.2);
+  transform: translateY(-1px);
+}
+
+.btn-tiny:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-case-download {
+  box-shadow: 0 2px 8px rgba(52, 211, 153, 0.2);
 }
 
 .progress-found {

@@ -15,6 +15,7 @@ function App() {
     const [yearSummary, setYearSummary] = useState(null);
     const [yearError, setYearError] = useState('');
     const [yearDownloading, setYearDownloading] = useState(false);
+    const [caseDownloading, setCaseDownloading] = useState({}); // { caseNo: boolean }
     const eventSourceRef = useRef(null);
     const progressEndRef = useRef(null);
 
@@ -55,25 +56,41 @@ function App() {
         }
     };
 
-    const handleDownloadAll = async () => {
-        setDownloading(true);
+    const handleDownloadAll = async (targetCase) => {
+        const caseToDownload = targetCase || caseNumber.trim();
+        if (!caseToDownload) return;
+
+        if (targetCase) {
+            setCaseDownloading(prev => ({ ...prev, [targetCase]: true }));
+        } else {
+            setDownloading(true);
+        }
+
         try {
-            const res = await fetch(`/api/download-all?caseNumber=${encodeURIComponent(caseNumber.trim())}`);
+            const res = await fetch(`/api/download-all?caseNumber=${encodeURIComponent(caseToDownload)}`);
             if (!res.ok) throw new Error('Download failed');
 
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${caseNumber.trim().replace(/\//g, '-')}_orders.zip`;
+            a.download = `${caseToDownload.replace(/\//g, '-')}_orders.zip`;
             document.body.appendChild(a);
             a.click();
             a.remove();
             window.URL.revokeObjectURL(url);
         } catch (err) {
-            setError('Failed to download PDFs. Please try again.');
+            if (targetCase) {
+                setYearError(`Failed to download ${targetCase}. Please try again.`);
+            } else {
+                setError('Failed to download PDFs. Please try again.');
+            }
         } finally {
-            setDownloading(false);
+            if (targetCase) {
+                setCaseDownloading(prev => ({ ...prev, [targetCase]: false }));
+            } else {
+                setDownloading(false);
+            }
         }
     };
 
@@ -97,6 +114,7 @@ function App() {
             if (data.type === 'found') {
                 setYearProgress(prev => [...prev, {
                     type: 'found',
+                    caseNumber: data.caseNumber,
                     text: `✅ ${data.caseNumber} — ${data.hearings} hearing(s), ${data.totalFiles} total files`,
                 }]);
             } else if (data.type === 'empty') {
@@ -435,7 +453,25 @@ function App() {
                         <div className="progress-log">
                             {yearProgress.map((p, i) => (
                                 <div key={i} className={`progress-item progress-${p.type}`}>
-                                    {p.text}
+                                    <span className="progress-text">{p.text}</span>
+                                    {p.type === 'found' && p.caseNumber && (
+                                        <button
+                                            className="btn-tiny btn-case-download"
+                                            onClick={() => handleDownloadAll(p.caseNumber)}
+                                            disabled={caseDownloading[p.caseNumber]}
+                                            title="Download ZIP for this case"
+                                        >
+                                            {caseDownloading[p.caseNumber] ? (
+                                                <span className="spinner spinner-tiny"></span>
+                                            ) : (
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                    <polyline points="7 10 12 15 17 10" />
+                                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                             <div ref={progressEndRef} />
