@@ -217,7 +217,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ========== Error Banner ========== */
@@ -236,8 +238,15 @@ body {
 }
 
 @keyframes slideIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ========== Results Card ========== */
@@ -252,8 +261,15 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .results-header {
@@ -349,6 +365,124 @@ body {
 
 .no-link {
   color: var(--text-muted);
+}
+
+/* ========== Divider ========== */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 32px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-card), transparent);
+}
+
+.divider-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+/* ========== Year Card ========== */
+.year-card {
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.year-card:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.year-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.year-desc strong {
+  color: #fbbf24;
+}
+
+.btn-year {
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.3);
+}
+
+.btn-year:not(:disabled):hover {
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-stop {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-stop:hover {
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
+  transform: translateY(-1px);
+}
+
+/* ========== Progress Log ========== */
+.progress-log {
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 16px 20px;
+  font-size: 0.82rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  line-height: 1.7;
+}
+
+.progress-log::-webkit-scrollbar {
+  width: 6px;
+}
+
+.progress-log::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.progress-log::-webkit-scrollbar-thumb {
+  background: var(--border-card);
+  border-radius: 3px;
+}
+
+.progress-item {
+  padding: 3px 0;
+}
+
+.progress-found {
+  color: var(--success);
+}
+
+.progress-empty {
+  color: var(--text-muted);
+}
+
+.progress-error {
+  color: var(--error);
+}
+
+/* ========== Spinner Small ========== */
+.spinner-small {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.year-results {
+  margin-top: 24px;
+  margin-bottom: 24px;
 }
 
 /* ========== Footer ========== */

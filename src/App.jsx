@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 function App() {
     const [caseNumber, setCaseNumber] = useState('');
@@ -7,6 +7,16 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [error, setError] = useState('');
+
+    // Year-wise state
+    const [year, setYear] = useState('');
+    const [yearLoading, setYearLoading] = useState(false);
+    const [yearProgress, setYearProgress] = useState([]);
+    const [yearSummary, setYearSummary] = useState(null);
+    const [yearError, setYearError] = useState('');
+    const [yearDownloading, setYearDownloading] = useState(false);
+    const eventSourceRef = useRef(null);
+    const progressEndRef = useRef(null);
 
     const handleSearch = async () => {
         if (!caseNumber.trim()) {
@@ -67,9 +77,108 @@ function App() {
         }
     };
 
+    const handleYearDownload = () => {
+        if (!year.trim()) {
+            setYearError('Please enter a year');
+            return;
+        }
+
+        setYearLoading(true);
+        setYearError('');
+        setYearProgress([]);
+        setYearSummary(null);
+
+        const evtSource = new EventSource(`/api/download-year?year=${encodeURIComponent(year.trim())}`);
+        eventSourceRef.current = evtSource;
+
+        evtSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'found') {
+                setYearProgress(prev => [...prev, {
+                    type: 'found',
+                    text: `✅ ${data.caseNumber} — ${data.hearings} hearing(s), ${data.totalFiles} total files`,
+                }]);
+            } else if (data.type === 'empty') {
+                setYearProgress(prev => [...prev, {
+                    type: 'empty',
+                    text: `⬜ ${data.caseNumber} — no data`,
+                }]);
+            } else if (data.type === 'error') {
+                setYearProgress(prev => [...prev, {
+                    type: 'error',
+                    text: `❌ ${data.caseNumber} — error`,
+                }]);
+            } else if (data.type === 'searching') {
+                // no-op, just shows that we're scanning
+            } else if (data.type === 'ready') {
+                setYearSummary({
+                    downloadId: data.downloadId,
+                    totalFiles: data.totalFiles,
+                    totalCases: data.totalCases,
+                    year: data.year,
+                });
+                setYearLoading(false);
+                evtSource.close();
+            } else if (data.type === 'done' && data.totalFiles === 0) {
+                setYearError('No cases found for this year.');
+                setYearLoading(false);
+                evtSource.close();
+            }
+
+            // Auto-scroll progress
+            setTimeout(() => {
+                progressEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 50);
+        };
+
+        evtSource.onerror = () => {
+            setYearError('Connection lost. Please try again.');
+            setYearLoading(false);
+            evtSource.close();
+        };
+    };
+
+    const handleYearZipDownload = async () => {
+        if (!yearSummary) return;
+        setYearDownloading(true);
+        try {
+            const res = await fetch(`/api/download-year-zip?downloadId=${yearSummary.downloadId}&year=${yearSummary.year}`);
+            if (!res.ok) throw new Error('Download failed');
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `RC_${yearSummary.year}_all_orders.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            setYearError('Failed to download ZIP. Please try again.');
+        } finally {
+            setYearDownloading(false);
+        }
+    };
+
+    const stopYearDownload = () => {
+        if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+        }
+        setYearLoading(false);
+    };
+
     const handleKeyDown = (e) => {
         if (e.key === 'Enter') handleSearch();
     };
+
+    const handleYearKeyDown = (e) => {
+        if (e.key === 'Enter') handleYearDownload();
+    };
+
+    const casesFound = yearProgress.filter(p => p.type === 'found').length;
+    const casesScanned = yearProgress.length;
 
     return (
         <div className="app">
@@ -93,6 +202,7 @@ function App() {
             </header>
 
             <main className="main">
+                {/* ===== Single Case Search ===== */}
                 <div className="search-card">
                     <label htmlFor="caseInput" className="input-label">Case Number</label>
                     <div className="search-row">
@@ -209,6 +319,126 @@ function App() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* ===== Year-wise Bulk Download ===== */}
+                <div className="divider">
+                    <span className="divider-text">OR</span>
+                </div>
+
+                <div className="search-card year-card">
+                    <label htmlFor="yearInput" className="input-label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginRight: 6 }}>
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                        Year-wise Bulk Download
+                    </label>
+                    <p className="year-desc">
+                        Enter a year to download <strong>all</strong> case PDFs (RC-1/{year || '____'}, RC-2/{year || '____'}, ...).
+                        Scanning stops after 5 consecutive empty cases.
+                    </p>
+                    <div className="search-row">
+                        <input
+                            id="yearInput"
+                            type="number"
+                            className="search-input"
+                            placeholder="e.g. 2022"
+                            value={year}
+                            onChange={(e) => setYear(e.target.value)}
+                            onKeyDown={handleYearKeyDown}
+                            min="2000"
+                            max="2030"
+                        />
+                        {yearLoading ? (
+                            <button className="btn btn-stop" onClick={stopYearDownload} id="stopYearButton">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                                </svg>
+                                Stop
+                            </button>
+                        ) : (
+                            <button
+                                className="btn btn-year"
+                                onClick={handleYearDownload}
+                                disabled={yearLoading}
+                                id="yearDownloadButton"
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                                Scan &amp; Download
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {yearError && (
+                    <div className="error-banner">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
+                        </svg>
+                        {yearError}
+                    </div>
+                )}
+
+                {(yearProgress.length > 0 || yearSummary) && (
+                    <div className="results-card year-results">
+                        <div className="results-header">
+                            <div>
+                                <h2 className="results-title">
+                                    {yearLoading ? (
+                                        <><span className="spinner spinner-small"></span> Scanning Year {year}...</>
+                                    ) : (
+                                        <>Scan Complete — Year {yearSummary?.year || year}</>
+                                    )}
+                                </h2>
+                                <p className="results-case">
+                                    Scanned {casesScanned} case(s) &mdash; <strong>{casesFound}</strong> with data
+                                    {yearSummary && <> &mdash; <strong>{yearSummary.totalFiles}</strong> total files</>}
+                                </p>
+                            </div>
+                            {yearSummary && (
+                                <button
+                                    className="btn btn-download"
+                                    onClick={handleYearZipDownload}
+                                    disabled={yearDownloading}
+                                    id="yearZipButton"
+                                >
+                                    {yearDownloading ? (
+                                        <>
+                                            <span className="spinner spinner-light"></span>
+                                            Preparing ZIP...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                <polyline points="7 10 12 15 17 10" />
+                                                <line x1="12" y1="15" x2="12" y2="3" />
+                                            </svg>
+                                            Download {yearSummary.totalFiles} Files (ZIP)
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="progress-log">
+                            {yearProgress.map((p, i) => (
+                                <div key={i} className={`progress-item progress-${p.type}`}>
+                                    {p.text}
+                                </div>
+                            ))}
+                            <div ref={progressEndRef} />
                         </div>
                     </div>
                 )}
