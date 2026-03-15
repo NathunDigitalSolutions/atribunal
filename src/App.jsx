@@ -20,6 +20,12 @@ function App() {
     const progressEndRef = useRef(null);
     const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
+    // Debugging: useful for seeing what URL is actually being hit in production
+    if (import.meta.env.PROD) {
+        console.log('Production mode detected');
+        console.log('API_BASE being used:', API_BASE || '(none, using relative paths)');
+    }
+
     const handleSearch = async () => {
         if (!caseNumber.trim()) {
             setError('Please enter a case number');
@@ -106,7 +112,9 @@ function App() {
         setYearProgress([]);
         setYearSummary(null);
 
-        const evtSource = new EventSource(`${API_BASE}/api/download-year?year=${encodeURIComponent(year.trim())}`);
+        const url = `${API_BASE}/api/download-year?year=${encodeURIComponent(year.trim())}`;
+        console.log('Connecting to SSE:', url);
+        const evtSource = new EventSource(url);
         eventSourceRef.current = evtSource;
 
         evtSource.onmessage = (event) => {
