@@ -18,6 +18,7 @@ function App() {
     const [caseDownloading, setCaseDownloading] = useState({}); // { caseNo: boolean }
     const eventSourceRef = useRef(null);
     const progressEndRef = useRef(null);
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
     const handleSearch = async () => {
         if (!caseNumber.trim()) {
@@ -31,7 +32,7 @@ function App() {
         setDisplayCaseNo('');
 
         try {
-            const res = await fetch('/api/search', {
+            const res = await fetch(`${API_BASE}/api/search`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ caseNumber: caseNumber.trim() }),
@@ -67,7 +68,7 @@ function App() {
         }
 
         try {
-            const res = await fetch(`/api/download-all?caseNumber=${encodeURIComponent(caseToDownload)}`);
+            const res = await fetch(`${API_BASE}/api/download-all?caseNumber=${encodeURIComponent(caseToDownload)}`);
             if (!res.ok) throw new Error('Download failed');
 
             const blob = await res.blob();
@@ -105,7 +106,7 @@ function App() {
         setYearProgress([]);
         setYearSummary(null);
 
-        const evtSource = new EventSource(`/api/download-year?year=${encodeURIComponent(year.trim())}`);
+        const evtSource = new EventSource(`${API_BASE}/api/download-year?year=${encodeURIComponent(year.trim())}`);
         eventSourceRef.current = evtSource;
 
         evtSource.onmessage = (event) => {
@@ -161,7 +162,7 @@ function App() {
         if (!yearSummary) return;
         setYearDownloading(true);
         try {
-            const res = await fetch(`/api/download-year-zip?downloadId=${yearSummary.downloadId}&year=${yearSummary.year}`);
+            const res = await fetch(`${API_BASE}/api/download-year-zip?downloadId=${yearSummary.downloadId}&year=${yearSummary.year}`);
             if (!res.ok) throw new Error('Download failed');
 
             const blob = await res.blob();

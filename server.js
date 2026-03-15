@@ -6,14 +6,18 @@ import * as cheerio from 'cheerio';
 import archiver from 'archiver';
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Create axios instance that skips SSL verification (government site has untrusted cert)
 const api = axios.create({
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type']
+}));
 app.use(express.json());
 
 // Search endpoint — proxies to tribunal API and returns structured data
